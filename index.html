@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vật Lí Bot - Công thức, Giải bài, Luyện thi</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--text:#1d2433;--muted:#6b7488;--primary:#3b6cf6;--on:#fff;--border:#e2e6ef;--hl:#fff4c2;--ok:#1e8e4e;--bad:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#12151c;--card:#1b202b;--text:#e8ecf5;--muted:#8b94a8;--primary:#5b86ff;--border:#2a3141;--hl:#4a4113;--ok:#4cc97f;--bad:#ff7a6b}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{height:100%;max-width:760px;margin:0 auto;display:flex;flex-direction:column;background:var(--bg)}
+header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--card);display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:17px;margin:0}
+header small{display:block;color:var(--muted);font-size:12px}
+#home{border:1px solid var(--border);background:none;color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px;display:none}
+#log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:90%;padding:10px 14px;border-radius:16px;word-wrap:break-word;overflow-wrap:anywhere}
+.msg.user{align-self:flex-end;background:var(--primary);color:var(--on);border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg b{background:var(--hl);padding:0 3px;border-radius:3px}
+.msg .t{font-weight:700;margin-bottom:4px}
+.msg .st{margin:3px 0}
+.msg .fm{display:flex;gap:8px;margin:3px 0;flex-wrap:wrap}
+.msg .fm code{font-family:ui-monospace,Consolas,monospace;font-size:14.5px;background:var(--bg);padding:1px 6px;border-radius:6px}
+.msg .fm span{color:var(--muted);font-size:14px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;align-self:flex-start;max-width:96%}
+.opt{border:1px solid var(--primary);background:var(--card);color:var(--primary);padding:7px 12px;border-radius:999px;cursor:pointer;font:inherit;font-size:14px}
+.opt:hover{background:var(--primary);color:var(--on)}
+.form{display:grid;gap:8px;margin-top:6px}
+.form label{font-size:14px;color:var(--muted);display:block}
+.form input{width:100%;border:1px solid var(--border);border-radius:10px;padding:8px 10px;font:inherit;background:var(--bg);color:var(--text)}
+.go{margin-top:4px;border:0;background:var(--primary);color:var(--on);border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
+.err{color:var(--bad);margin-top:4px;font-size:14px}
+#bar{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--card)}
+#q{flex:1;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font:inherit;background:var(--bg);color:var(--text)}
+#q:focus,.form input:focus{outline:2px solid var(--primary)}
+#send{border:0;background:var(--primary);color:var(--on);border-radius:12px;padding:0 18px;font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div><h1>⚛️ Vật Lí Bot</h1><small>Công thức · Giải bài có lời giải · Luyện trắc nghiệm</small></div>
+    <button id="home" type="button">↩ Menu</button>
+  </header>
+  <div id="log"></div>
+  <form id="bar" autocomplete="off">
+    <input id="q" type="text" maxlength="60" placeholder="Nhập tên của bạn...">
+    <button id="send" type="submit">Bắt đầu</button>
+  </form>
+</div>
+<script>
+"use strict";
+/* ---------- tiện ích ---------- */
+const $=id=>document.getElementById(id), log=$("log"), qIn=$("q"), sendBtn=$("send"), homeBtn=$("home");
+const G=9.8, H=6.625e-34, C=3e8, EV=1.6e-19, MP=1.0073, MN=1.0087, U2MEV=931.5;
+let named=false, userName="";
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const norm=s=>String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/đ/g,"d");
+const SUP={"0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹","-":"⁻"};
+const sup=e=>String(e).split("").map(c=>SUP[c]||c).join("");
+function n(x){
+  if(!isFinite(x))return "∞";
+  if(x===0)return "0";
+  const a=Math.abs(x);
+  if(a<1e-3||a>=1e6){
+    let e=Math.floor(Math.log10(a)),m=+(x/Math.pow(10,e)).toPrecision(4);
+    if(Math.abs(m)>=10){m/=10;e++}
+    return String(m).replace(".",",")+"×10"+sup(e);
+  }
+  return String(+x.toPrecision(4)).replace(".",",");
+}
+const p=x=>x<0?"("+n(x)+")":n(x);
+function num(s){s=String(s).trim().replace(",",".");if(s==="")return null;const x=Number(s);return isFinite(x)?x:NaN}
+function scroll(){log.scrollTop=log.scrollHeight}
+function bot(html){const d=document.createElement("div");d.className="msg bot";d.innerHTML=html;log.appendChild(d);scroll();return d}
+function user(t){const d=document.createElement("div");d.className="msg user";d.textContent=t;log.appendChild(d);scroll()}
+function opts(list){
+  const w=document.createElement("div");w.className="opts";
+  list.forEach(([label,fn])=>{
+    const b=document.createElement("button");b.type="button";b.className="opt";b.textContent=label;
+    b.onclick=()=>{w.remove();user(label);fn()};w.appendChild(b);
+  });
+  log.appendChild(w);scroll();
+}
+
+/* ---------- dữ liệu công thức theo chủ đề ---------- */
+const TOPICS=[
+{id:"dh",name:"Động học",kw:"dong hoc chuyen dong van toc gia toc roi tu do tron deu",calcs:["cdt","roi"],f:[
+ ["v = v₀ + at","vận tốc"],["s = v₀t + ½at²","độ dời (x = x₀ + v₀t + ½at²)"],["v² − v₀² = 2as","hệ thức độc lập thời gian"],
+ ["v = gt ; h = ½gt²","rơi tự do (g ≈ 9,8 m/s²)"],["ω = 2π/T = 2πf ; v = ωr","chuyển động tròn đều"],["a_ht = v²/r = ω²r","gia tốc hướng tâm"]]},
+{id:"dlh",name:"Động lực học",kw:"dong luc hoc luc newton ma sat luc hap dan huong tam lo xo",calcs:["newton"],f:[
+ ["ΣF⃗ = m·a⃗","định luật II Newton"],["P = mg","trọng lực"],["F_ms = μN","lực ma sát trượt"],["F_đh = k|Δl|","lực đàn hồi lò xo"],
+ ["F_hd = G·m₁m₂/r²","lực hấp dẫn (G = 6,67×10⁻¹¹ N·m²/kg²)"],["F_ht = mv²/r","lực hướng tâm"]]},
+{id:"nl",name:"Công – Năng lượng – Động lượng",kw:"cong nang luong dong nang the nang co nang dong luong bao toan va cham cong suat",calcs:["nl"],f:[
+ ["A = F·s·cosα","công của lực"],["𝒫 = A/t","công suất"],["W_đ = ½mv²","động năng"],["W_t = mgh","thế năng trọng trường"],
+ ["W = W_đ + W_t = const","cơ năng (chỉ có lực thế tác dụng)"],["p = mv ; FΔt = Δp","động lượng, xung lượng"],
+ ["m₁v₁ + m₂v₂ = m₁v₁' + m₂v₂'","bảo toàn động lượng (hệ kín)"],["V = (m₁v₁ + m₂v₂)/(m₁ + m₂)","va chạm mềm"]]},
+{id:"nh",name:"Nhiệt học – Khí lí tưởng",kw:"nhiet hoc khi li tuong nhiet luong nhiet dung rieng nguyen li dang nhiet dang tich dang ap trang thai nong chay hoa hoi noi nang",calcs:["heat","gas"],f:[
+ ["Q = mcΔt","nhiệt lượng (c nước ≈ 4200 J/kg·K)"],["Q = λm ; Q = Lm","nóng chảy ; hóa hơi"],["ΔU = A + Q","nguyên lí I (A>0 nhận công, Q>0 nhận nhiệt)"],
+ ["T(K) = t(°C) + 273","nhiệt độ tuyệt đối"],["pV = nRT","phương trình Clapeyron (R = 8,31 J/mol·K)"],["pV = NkT","k = 1,38×10⁻²³ J/K"],
+ ["p₁V₁/T₁ = p₂V₂/T₂","khối lượng khí không đổi"],["đẳng nhiệt: p₁V₁ = p₂V₂","Boyle – Mariotte"],["đẳng tích: p₁/T₁ = p₂/T₂","Charles"],["đẳng áp: V₁/T₁ = V₂/T₂","Gay-Lussac"],
+ ["p = ⅓·μ·m₀·v̄²","μ: mật độ phân tử"],["Ē_đ = (3/2)kT","động năng tịnh tiến trung bình"]]},
+{id:"dd",name:"Dao động cơ",kw:"dao dong dieu hoa con lac lo xo con lac don chu ki tan so bien do pha",calcs:["spring","pend"],f:[
+ ["x = A cos(ωt + φ)","li độ"],["v = −ωA sin(ωt + φ)","vận tốc"],["a = −ω²x","gia tốc"],["ω = 2π/T = 2πf","tần số góc"],
+ ["A² = x² + v²/ω²","hệ thức độc lập"],["v_max = ωA ; a_max = ω²A","giá trị cực đại"],["W = ½kA² = ½mω²A²","cơ năng"],
+ ["T = 2π√(m/k)","con lắc lò xo"],["T = 2π√(l/g)","con lắc đơn (góc nhỏ)"]]},
+{id:"so",name:"Sóng cơ – Sóng âm",kw:"song co song am buoc song giao thoa song dung cuong do am",calcs:["wave"],f:[
+ ["λ = vT = v/f","bước sóng"],["u = A cos(ωt − 2πx/λ)","phương trình sóng truyền theo +x"],["l = kλ/2","sóng dừng, hai đầu cố định (k = 1, 2, ...)"],
+ ["d₂ − d₁ = kλ","cực đại giao thoa (hai nguồn cùng pha)"],["d₂ − d₁ = (k + ½)λ","cực tiểu giao thoa (hai nguồn cùng pha)"],["L = 10·lg(I/I₀)","mức cường độ âm, I₀ = 10⁻¹² W/m²"]]},
+{id:"dien",name:"Điện trường – Dòng điện",kw:"dien truong dong dien dinh luat om coulomb tu dien dien tro cong suat dien dien nang nguon dien",calcs:["ohm"],f:[
+ ["F = k|q₁q₂|/(εr²)","định luật Coulomb (k = 9×10⁹ N·m²/C²)"],["E = F/|q| = k|Q|/(εr²)","cường độ điện trường"],["U = Ed","điện trường đều"],
+ ["C = Q/U ; W = ½CU²","tụ điện"],["I = Δq/Δt","cường độ dòng điện"],["R = ρl/S","điện trở dây dẫn"],
+ ["I = E/(R + r)","định luật Ôm toàn mạch"],["U = E − Ir ; H = U/E","hiệu điện thế mạch ngoài ; hiệu suất nguồn"],["𝒫 = UI ; A = UIt ; Q = I²Rt","công suất, điện năng, nhiệt lượng"]]},
+{id:"tu",name:"Từ trường – Cảm ứng – Xoay chiều",kw:"tu truong cam ung dien tu luc tu lorentz xoay chieu may bien ap tu thong suat dien dong",calcs:["force"],f:[
+ ["F = BIl·sinα","lực từ lên đoạn dây"],["f = |q|vB·sinα","lực Lorentz"],["Φ = BS·cosα","từ thông"],["e_c = −ΔΦ/Δt","suất điện động cảm ứng"],
+ ["I = I₀/√2 ; U = U₀/√2","giá trị hiệu dụng"],["U₁/U₂ = N₁/N₂","máy biến áp lí tưởng"],["Z = √(R² + (Z_L − Z_C)²)","tổng trở mạch RLC nối tiếp"],
+ ["Z_L = ωL ; Z_C = 1/(ωC)","cảm kháng, dung kháng"],["𝒫 = UI·cosφ ; cosφ = R/Z","công suất, hệ số công suất"]]},
+{id:"quang",name:"Quang học",kw:"quang hoc khuc xa phan xa toan phan thau kinh anh chiet suat",calcs:["refr"],f:[
+ ["n₁ sin i = n₂ sin r","định luật khúc xạ"],["n = c/v","chiết suất"],["sin i_gh = n₂/n₁ (n₁ > n₂)","góc tới hạn"],
+ ["1/f = 1/d + 1/d'","thấu kính (d' > 0: ảnh thật)"],["k = −d'/d","số phóng đại (|k| = A'B'/AB)"],["D = 1/f","độ tụ (điốp, f tính bằng m)"]]},
+{id:"hn",name:"Lượng tử – Hạt nhân",kw:"luong tu hat nhan photon phong xa chu ki ban ra nang luong lien ket do hut khoi quang dien",calcs:["photon","decay","binding"],f:[
+ ["ε = hf = hc/λ","năng lượng photon (h = 6,625×10⁻³⁴ J·s)"],["hf = A + W_đ0max","công thức Einstein về quang điện"],["E_m − E_n = hf","hấp thụ/phát xạ photon (Bo)"],
+ ["Δm = Zm_p + (A−Z)m_n − m_X","độ hụt khối"],["W_lk = Δm·c²","1 u = 931,5 MeV/c²"],["N = N₀·2^(−t/T)","định luật phóng xạ"],["λ_pr = ln2/T","hằng số phóng xạ"],["E = mc²","hệ thức Einstein"]]}
+];
+
+/* ---------- máy giải bài có lời giải ---------- */
+const CALCS={
+cdt:{name:"Chuyển động thẳng biến đổi đều",kw:"chuyen dong thang bien doi deu van toc gia toc quang duong",f:[["v0","Vận tốc đầu v₀ (m/s)"],["a","Gia tốc a (m/s²)"],["t","Thời gian t (s)"]],
+ solve(v){
+  if(v.t<0)return{err:"Thời gian t phải ≥ 0."};
+  const vv=v.v0+v.a*v.t,s=v.v0*v.t+0.5*v.a*v.t*v.t;
+  const st=["Vận tốc: v = v₀ + at = "+p(v.v0)+" + "+p(v.a)+"·"+p(v.t)+" = "+n(vv)+" m/s",
+   "Độ dời: s = v₀t + ½at² = "+p(v.v0)+"·"+p(v.t)+" + ½·"+p(v.a)+"·"+p(v.t)+"² = "+n(s)+" m"];
+  if(v.v0*vv<0)st.push("Lưu ý: vật đổi chiều chuyển động trong khoảng thời gian này, nên s là độ dời, không phải quãng đường.");
+  return{st,ans:"v = "+n(vv)+" m/s ; s = "+n(s)+" m"};}},
+roi:{name:"Rơi tự do (không vận tốc đầu)",kw:"roi tu do do cao",f:[["h","Độ cao h (m)"]],
+ solve(v){
+  if(v.h<=0)return{err:"Độ cao h phải > 0."};
+  const t=Math.sqrt(2*v.h/G),vv=G*t;
+  return{st:["Lấy g = 9,8 m/s².","Từ h = ½gt² ⇒ t = √(2h/g) = √(2·"+n(v.h)+"/9,8) = "+n(t)+" s","Vận tốc chạm đất: v = gt = 9,8·"+n(t)+" = "+n(vv)+" m/s"],
+   ans:"t = "+n(t)+" s ; v = "+n(vv)+" m/s"};}},
+newton:{name:"Vật trên mặt ngang có ma sát",kw:"luc ma sat mat ngang newton gia toc luc keo",f:[["F","Lực kéo F nằm ngang (N)"],["m","Khối lượng m (kg)"],["mu","Hệ số ma sát trượt μ"]],
+ solve(v){
+  if(v.m<=0||v.mu<0||v.F<0)return{err:"Cần m > 0, μ ≥ 0, F ≥ 0."};
+  const fms=v.mu*v.m*G,a=(v.F-fms)/v.m;
+  const st=["Lấy g = 9,8 m/s². Theo phương thẳng đứng: N = P = mg = "+n(v.m*G)+" N","Lực ma sát trượt: F_ms = μN = "+n(v.mu)+"·"+n(v.m*G)+" = "+n(fms)+" N"];
+  if(a<=0){st.push("F = "+n(v.F)+" N ≤ F_ms = "+n(fms)+" N: lực kéo không thắng được ma sát, nên vật không trượt (nếu ban đầu đứng yên).");return{st,ans:"a = 0"};}
+  st.push("Định luật II Newton (phương ngang): F − F_ms = ma ⇒ a = (F − F_ms)/m = ("+n(v.F)+" − "+n(fms)+")/"+n(v.m)+" = "+n(a)+" m/s²");
+  return{st,ans:"a = "+n(a)+" m/s²"};}},
+nl:{name:"Động năng – Thế năng – Cơ năng",kw:"dong nang the nang co nang",f:[["m","Khối lượng m (kg)"],["v","Vận tốc v (m/s)"],["h","Độ cao h so với mốc thế năng (m)"]],
+ solve(v){
+  if(v.m<=0)return{err:"Khối lượng m phải > 0."};
+  const wd=0.5*v.m*v.v*v.v,wt=v.m*G*v.h;
+  return{st:["Lấy g = 9,8 m/s².","Động năng: W_đ = ½mv² = ½·"+n(v.m)+"·"+p(v.v)+"² = "+n(wd)+" J","Thế năng: W_t = mgh = "+n(v.m)+"·9,8·"+p(v.h)+" = "+n(wt)+" J","Cơ năng: W = W_đ + W_t = "+n(wd+wt)+" J"],
+   ans:"W_đ = "+n(wd)+" J ; W_t = "+n(wt)+" J ; W = "+n(wd+wt)+" J"};}},
+spring:{name:"Con lắc lò xo",kw:"con lac lo xo chu ki tan so co nang",f:[["m","Khối lượng m (kg)"],["k","Độ cứng k (N/m)"],["A","Biên độ A (cm)"]],
+ solve(v){
+  if(v.m<=0||v.k<=0||v.A<0)return{err:"Cần m > 0, k > 0, A ≥ 0."};
+  const w=Math.sqrt(v.k/v.m),T=2*Math.PI/w,f=1/T,A=v.A/100;
+  return{st:["Đổi A = "+n(v.A)+" cm = "+n(A)+" m","ω = √(k/m) = √("+n(v.k)+"/"+n(v.m)+") = "+n(w)+" rad/s","T = 2π/ω = "+n(T)+" s ; f = 1/T = "+n(f)+" Hz","v_max = ωA = "+n(w*A)+" m/s ; a_max = ω²A = "+n(w*w*A)+" m/s²","Cơ năng: W = ½kA² = ½·"+n(v.k)+"·"+n(A)+"² = "+n(0.5*v.k*A*A)+" J"],
+   ans:"ω = "+n(w)+" rad/s ; T = "+n(T)+" s ; f = "+n(f)+" Hz ; W = "+n(0.5*v.k*A*A)+" J"};}},
+pend:{name:"Con lắc đơn",kw:"con lac don chu ki chieu dai",f:[["l","Chiều dài l (m)"],["g","Gia tốc trọng trường g (m/s²)","9,8"]],
+ solve(v){
+  if(v.l<=0||v.g<=0)return{err:"Cần l > 0 và g > 0."};
+  const T=2*Math.PI*Math.sqrt(v.l/v.g);
+  return{st:["T = 2π√(l/g) = 2π√("+n(v.l)+"/"+n(v.g)+") = "+n(T)+" s","f = 1/T = "+n(1/T)+" Hz ; ω = 2π/T = "+n(2*Math.PI/T)+" rad/s","(Công thức đúng với góc lệch nhỏ.)"],ans:"T = "+n(T)+" s"};}},
+gas:{name:"Khí lí tưởng (p₁V₁/T₁ = p₂V₂/T₂)",kw:"khi li tuong dang nhiet dang tich dang ap trang thai",
+ hint:"Để trống đúng 1 ô là đại lượng cần tìm. T tính bằng kelvin (T = t + 273). p, V dùng cùng đơn vị ở hai trạng thái.",
+ f:[["p1","p₁",null,1],["V1","V₁",null,1],["T1","T₁ (K)",null,1],["p2","p₂",null,1],["V2","V₂",null,1],["T2","T₂ (K)",null,1]],
+ solve(v){
+  const keys=["p1","V1","T1","p2","V2","T2"],miss=keys.filter(k=>v[k]===null);
+  if(miss.length!==1)return{err:"Hãy để trống đúng 1 ô (đại lượng cần tìm), 5 ô còn lại phải có giá trị."};
+  if(keys.some(k=>v[k]!==null&&v[k]<=0))return{err:"Các giá trị phải > 0 (nhiệt độ tính bằng kelvin)."};
+  const u=miss[0];let r;
+  if(u==="p1")r=v.p2*v.V2*v.T1/(v.T2*v.V1);
+  else if(u==="V1")r=v.p2*v.V2*v.T1/(v.T2*v.p1);
+  else if(u==="T1")r=v.p1*v.V1*v.T2/(v.p2*v.V2);
+  else if(u==="p2")r=v.p1*v.V1*v.T2/(v.T1*v.V2);
+  else if(u==="V2")r=v.p1*v.V1*v.T2/(v.T1*v.p2);
+  else r=v.p2*v.V2*v.T1/(v.p1*v.V1);
+  const st=["Phương trình trạng thái: p₁V₁/T₁ = p₂V₂/T₂"];
+  if(v.T1!==null&&v.T1===v.T2)st.push("T₁ = T₂ nên đây là quá trình đẳng nhiệt (p₁V₁ = p₂V₂).");
+  else if(v.V1!==null&&v.V1===v.V2)st.push("V₁ = V₂ nên đây là quá trình đẳng tích (p₁/T₁ = p₂/T₂).");
+  else if(v.p1!==null&&v.p1===v.p2)st.push("p₁ = p₂ nên đây là quá trình đẳng áp (V₁/T₁ = V₂/T₂).");
+  const nm={p1:"p₁",V1:"V₁",T1:"T₁",p2:"p₂",V2:"V₂",T2:"T₂"};
+  st.push("Giải ra đại lượng cần tìm: "+nm[u]+" = "+n(r)+(u[0]==="T"?" K (= "+n(r-273)+" °C)":""));
+  return{st,ans:nm[u]+" = "+n(r)+(u[0]==="T"?" K":"")};}},
+heat:{name:"Nhiệt lượng Q = mcΔt",kw:"nhiet luong nhiet dung rieng nuoc",f:[["m","Khối lượng m (kg)"],["c","Nhiệt dung riêng c (J/kg·K)","4200"],["t1","Nhiệt độ đầu t₁ (°C)"],["t2","Nhiệt độ cuối t₂ (°C)"]],
+ solve(v){
+  if(v.m<=0||v.c<=0)return{err:"Cần m > 0 và c > 0."};
+  const q=v.m*v.c*(v.t2-v.t1);
+  return{st:["Q = mcΔt = m·c·(t₂ − t₁) = "+n(v.m)+"·"+n(v.c)+"·("+n(v.t2)+" − "+p(v.t1)+") = "+n(q)+" J",q>=0?"Q > 0: vật thu nhiệt.":"Q < 0: vật tỏa nhiệt."],ans:"Q = "+n(q)+" J"};}},
+ohm:{name:"Định luật Ôm toàn mạch",kw:"dinh luat om toan mach suat dien dong dien tro trong cuong do dong dien hieu suat",f:[["E","Suất điện động E (V)"],["r","Điện trở trong r (Ω)"],["R","Điện trở mạch ngoài R (Ω)"]],
+ solve(v){
+  if(v.E<=0||v.r<0||v.R<=0)return{err:"Cần E > 0, r ≥ 0, R > 0."};
+  const I=v.E/(v.R+v.r),U=I*v.R;
+  return{st:["I = E/(R + r) = "+n(v.E)+"/("+n(v.R)+" + "+n(v.r)+") = "+n(I)+" A","U = IR = "+n(I)+"·"+n(v.R)+" = "+n(U)+" V (cũng bằng E − Ir)","Công suất tiêu thụ ở mạch ngoài: 𝒫 = I²R = "+n(I*I*v.R)+" W ; công suất nguồn: 𝒫_ng = EI = "+n(v.E*I)+" W","Hiệu suất nguồn: H = U/E = "+n(100*U/v.E)+" %"],
+   ans:"I = "+n(I)+" A ; U = "+n(U)+" V ; H = "+n(100*U/v.E)+" %"};}},
+force:{name:"Lực từ F = BIl·sinα",kw:"luc tu day dan tu truong cam ung tu",f:[["B","Cảm ứng từ B (T)"],["I","Cường độ dòng điện I (A)"],["l","Chiều dài đoạn dây l (m)"],["al","Góc α giữa B và dây (độ)"]],
+ solve(v){
+  if(v.B<0||v.I<0||v.l<0)return{err:"B, I, l phải ≥ 0."};
+  if(v.al<0||v.al>180)return{err:"Góc α nên nằm trong khoảng 0° đến 180°."};
+  const s=Math.sin(v.al*Math.PI/180),F=v.B*v.I*v.l*s;
+  return{st:["F = BIl·sinα = "+n(v.B)+"·"+n(v.I)+"·"+n(v.l)+"·sin("+n(v.al)+"°) = "+n(F)+" N","Chiều lực: dùng quy tắc bàn tay trái."],ans:"F = "+n(F)+" N"};}},
+refr:{name:"Khúc xạ ánh sáng",kw:"khuc xa anh sang phan xa toan phan goc toi han chiet suat",f:[["n1","Chiết suất môi trường tới n₁"],["n2","Chiết suất môi trường khúc xạ n₂"],["i","Góc tới i (độ, từ 0 đến 90)"]],
+ solve(v){
+  if(v.n1<=0||v.n2<=0||v.i<0||v.i>=90)return{err:"Cần n₁, n₂ > 0 và 0 ≤ i < 90°."};
+  const sr=v.n1*Math.sin(v.i*Math.PI/180)/v.n2,st=["n₁ sin i = n₂ sin r ⇒ sin r = n₁ sin i / n₂ = "+n(v.n1)+"·sin("+n(v.i)+"°)/"+n(v.n2)+" = "+n(sr)];
+  if(v.n1>v.n2){const ig=Math.asin(v.n2/v.n1)*180/Math.PI;st.push("n₁ > n₂ nên có góc tới hạn: sin i_gh = n₂/n₁ ⇒ i_gh = "+n(ig)+"°");}
+  if(sr>1){st.push("sin r > 1: không có tia khúc xạ, xảy ra phản xạ toàn phần (i > i_gh).");return{st,ans:"Phản xạ toàn phần"};}
+  const r=Math.asin(sr)*180/Math.PI;st.push("r = "+n(r)+"°");return{st,ans:"r = "+n(r)+"°"};}},
+wave:{name:"Bước sóng và chu kì",kw:"song co buoc song tan so van toc truyen song",f:[["f","Tần số f (Hz)"],["v","Tốc độ truyền sóng v (m/s)"]],
+ solve(v){
+  if(v.f<=0||v.v<=0)return{err:"Cần f > 0 và v > 0."};
+  const l=v.v/v.f;
+  return{st:["T = 1/f = 1/"+n(v.f)+" = "+n(1/v.f)+" s","λ = v/f = "+n(v.v)+"/"+n(v.f)+" = "+n(l)+" m = "+n(l*100)+" cm"],ans:"λ = "+n(l)+" m ; T = "+n(1/v.f)+" s"};}},
+photon:{name:"Năng lượng photon",kw:"photon nang luong buoc song luong tu",f:[["lam","Bước sóng λ (nm)"]],
+ solve(v){
+  if(v.lam<=0)return{err:"Bước sóng phải > 0."};
+  const l=v.lam*1e-9,e=H*C/l;
+  return{st:["Đổi λ = "+n(v.lam)+" nm = "+n(l)+" m","Lấy h = 6,625×10⁻³⁴ J·s, c = 3×10⁸ m/s, 1 eV = 1,6×10⁻¹⁹ J","ε = hc/λ = "+n(e)+" J = "+n(e/EV)+" eV","Tần số: f = c/λ = "+n(C/l)+" Hz"],ans:"ε = "+n(e)+" J ≈ "+n(e/EV)+" eV"};}},
+decay:{name:"Phóng xạ: khối lượng còn lại",kw:"phong xa chu ki ban ra khoi luong con lai",f:[["m0","Khối lượng ban đầu m₀ (g)"],["T","Chu kì bán rã T"],["t","Thời gian t (cùng đơn vị với T)"]],
+ solve(v){
+  if(v.m0<=0||v.T<=0||v.t<0)return{err:"Cần m₀ > 0, T > 0, t ≥ 0."};
+  const k=Math.pow(2,-v.t/v.T),m=v.m0*k;
+  return{st:["t/T = "+n(v.t)+"/"+n(v.T)+" = "+n(v.t/v.T),"m = m₀·2^(−t/T) = "+n(v.m0)+"·2^(−"+n(v.t/v.T)+") = "+n(m)+" g","Tỉ lệ còn lại: "+n(100*k)+" % ; đã phân rã: "+n(v.m0-m)+" g"],ans:"m = "+n(m)+" g"};}},
+binding:{name:"Năng lượng liên kết hạt nhân",kw:"nang luong lien ket do hut khoi hat nhan",f:[["Z","Số proton Z"],["A","Số khối A"],["mx","Khối lượng hạt nhân m_X (u)"]],
+ solve(v){
+  if(!Number.isInteger(v.Z)||!Number.isInteger(v.A)||v.Z<1||v.A<=v.Z)return{err:"Z, A phải là số nguyên với 1 ≤ Z < A."};
+  if(v.mx<=0)return{err:"Khối lượng hạt nhân phải > 0."};
+  const dm=v.Z*MP+(v.A-v.Z)*MN-v.mx;
+  if(dm<=0)return{err:"Δm ≤ 0 nên dữ kiện chưa hợp lí. Hãy kiểm tra lại m_X (đơn vị u, là khối lượng hạt nhân, không phải nguyên tử)."};
+  const w=dm*U2MEV;
+  return{st:["Lấy m_p = 1,0073 u ; m_n = 1,0087 u ; 1 u = 931,5 MeV/c²","Δm = Z·m_p + (A − Z)·m_n − m_X = "+n(dm)+" u","W_lk = Δm·c² = "+n(dm)+"·931,5 = "+n(w)+" MeV","Năng lượng liên kết riêng: W_lk/A = "+n(w/v.A)+" MeV/nuclôn"],ans:"W_lk = "+n(w)+" MeV ; W_lk/A = "+n(w/v.A)+" MeV/nuclôn"};}}
+};
+
+/* ---------- bộ câu hỏi luyện tập ---------- */
+const MCQ=[
+{q:"Vật rơi tự do không vận tốc đầu từ độ cao 20 m, lấy g = 10 m/s². Thời gian rơi là",o:["1 s","2 s","4 s","2√2 s"],a:1,e:"h = ½gt² ⇒ t = √(2h/g) = √(2·20/10) = 2 s."},
+{q:"Con lắc lò xo, giữ nguyên k và tăng khối lượng vật lên 4 lần thì chu kì dao động",o:["tăng 2 lần","tăng 4 lần","giảm 2 lần","không đổi"],a:0,e:"T = 2π√(m/k) tỉ lệ với √m. m tăng 4 lần thì T tăng √4 = 2 lần."},
+{q:"Một lượng khí lí tưởng biến đổi đẳng tích. Nếu nhiệt độ tuyệt đối tăng gấp đôi thì áp suất",o:["tăng gấp đôi","giảm một nửa","không đổi","tăng gấp bốn"],a:0,e:"Đẳng tích: p₁/T₁ = p₂/T₂, nên p tỉ lệ thuận với T (kelvin)."},
+{q:"Nhiệt lượng cần để đun 2 kg nước từ 20 °C lên 70 °C (c = 4200 J/kg·K) là",o:["4,2×10⁵ J","8,4×10⁵ J","2,1×10⁵ J","4,2×10⁴ J"],a:0,e:"Q = mcΔt = 2·4200·50 = 4,2×10⁵ J."},
+{q:"Nguồn điện có E = 12 V, r = 1 Ω nối với điện trở R = 5 Ω. Cường độ dòng điện trong mạch là",o:["2 A","2,4 A","12 A","1,2 A"],a:0,e:"I = E/(R + r) = 12/(5 + 1) = 2 A."},
+{q:"Ánh sáng truyền từ môi trường chiết quang hơn sang môi trường chiết quang kém với góc tới lớn hơn góc tới hạn thì",o:["xảy ra phản xạ toàn phần","vẫn có tia khúc xạ","tia sáng truyền thẳng","góc khúc xạ bằng 0"],a:0,e:"Khi n₁ > n₂ và i > i_gh thì không còn tia khúc xạ, ánh sáng bị phản xạ toàn phần."},
+{q:"Sóng cơ có tần số 50 Hz truyền với tốc độ 20 m/s. Bước sóng là",o:["0,4 m","2,5 m","40 m","0,04 m"],a:0,e:"λ = v/f = 20/50 = 0,4 m = 40 cm."},
+{q:"Máy biến áp lí tưởng có N₁ = 1000 vòng, N₂ = 100 vòng, điện áp sơ cấp 220 V. Điện áp thứ cấp là",o:["22 V","2200 V","220 V","11 V"],a:0,e:"U₂ = U₁·N₂/N₁ = 220·100/1000 = 22 V."},
+{q:"Photon có bước sóng 600 nm. Lấy h = 6,625×10⁻³⁴ J·s, c = 3×10⁸ m/s. Năng lượng của nó xấp xỉ",o:["3,31×10⁻¹⁹ J","3,31×10⁻²⁵ J","1,1×10⁻¹⁹ J","3,31×10⁻¹⁶ J"],a:0,e:"ε = hc/λ = 6,625×10⁻³⁴·3×10⁸/(6×10⁻⁷) ≈ 3,31×10⁻¹⁹ J."},
+{q:"Chất phóng xạ có chu kì bán rã 8 ngày. Sau 24 ngày, phần khối lượng còn lại so với ban đầu là",o:["1/8","1/3","1/4","1/16"],a:0,e:"t/T = 3 nên m/m₀ = 2⁻³ = 1/8."},
+{q:"Đoạn dây thẳng dài 0,5 m có dòng 4 A, đặt vuông góc với từ trường đều B = 0,2 T. Lực từ tác dụng lên dây là",o:["0,4 N","0,8 N","0,1 N","4 N"],a:0,e:"F = BIl·sin90° = 0,2·4·0,5 = 0,4 N."},
+{q:"Xe 2 kg chuyển động 3 m/s va chạm mềm với xe 1 kg đứng yên. Vận tốc hai xe sau va chạm là",o:["2 m/s","3 m/s","1 m/s","1,5 m/s"],a:0,e:"Bảo toàn động lượng: 2·3 = (2 + 1)·V ⇒ V = 2 m/s."},
+{q:"Khí lí tưởng nhận công 100 J và tỏa nhiệt 40 J ra môi trường. Độ biến thiên nội năng là",o:["tăng 60 J","tăng 140 J","giảm 60 J","tăng 100 J"],a:0,e:"ΔU = A + Q = 100 + (−40) = 60 J > 0 nên nội năng tăng."},
+{q:"Nội năng của một lượng khí lí tưởng xác định chỉ phụ thuộc vào",o:["nhiệt độ","thể tích","áp suất","cả áp suất và thể tích"],a:0,e:"Khí lí tưởng bỏ qua tương tác giữa các phân tử nên nội năng chỉ gồm động năng, phụ thuộc nhiệt độ."}
+];
+const TF=[
+{s:"Xét một lượng khí lí tưởng xác định.",it:[
+ ["Trong quá trình đẳng nhiệt, p và V tỉ lệ nghịch với nhau.",true,"Boyle – Mariotte: pV = const."],
+ ["Trong quá trình đẳng áp, V tỉ lệ thuận với nhiệt độ tính theo °C.",false,"V tỉ lệ thuận với nhiệt độ tuyệt đối T (kelvin), không phải °C."],
+ ["Khi nhiệt độ tăng thì động năng tịnh tiến trung bình của phân tử tăng.",true,"Ē_đ = (3/2)kT."],
+ ["Nội năng của khí lí tưởng phụ thuộc vào thể tích của khí.",false,"Chỉ phụ thuộc nhiệt độ vì bỏ qua thế năng tương tác phân tử."]]},
+{s:"Một con lắc lò xo dao động điều hòa trên mặt phẳng ngang, bỏ qua ma sát.",it:[
+ ["Gia tốc của vật luôn hướng về vị trí cân bằng.",true,"a = −ω²x."],
+ ["Tại vị trí biên, vận tốc của vật có độ lớn cực đại.",false,"Tại biên v = 0; v cực đại khi qua vị trí cân bằng."],
+ ["Cơ năng của con lắc được bảo toàn.",true,"Chỉ có lực đàn hồi (lực thế) thực hiện công."],
+ ["Chu kì dao động phụ thuộc vào biên độ.",false,"T = 2π√(m/k), không phụ thuộc A."]]}
+];
+
+/* ---------- luồng hội thoại ---------- */
+function menu(){
+  homeBtn.style.display="block";
+  bot("Bạn muốn làm gì, "+esc(userName)+"?<br><small style='color:var(--muted)'>Lưu ý: bot trả lời theo kịch bản có sẵn (không phải AI), nên không giải được câu hỏi tự do ngoài các dạng bài dưới đây.</small>");
+  opts([["📐 Công thức theo chủ đề",topics],["🧮 Giải bài có lời giải",calcMenu],["📝 Trắc nghiệm 4 đáp án",()=>mcq()],["✔️ Đúng – Sai 4 ý",()=>tf(0)]]);
+  bot("Hoặc gõ từ khóa ở ô bên dưới, ví dụ: <i>định luật Ôm</i>, <i>con lắc lò xo</i>, <i>phóng xạ</i>.");
+}
+function topics(){bot("Chọn chủ đề:");opts(TOPICS.map(t=>[t.name,()=>showTopic(t)]))}
+function showTopic(t){
+  const d=bot("<div class='t'>"+esc(t.name)+"</div>"+t.f.map(r=>"<div class='fm'><code>"+esc(r[0])+"</code><span>"+esc(r[1])+"</span></div>").join(""));
+  const l=t.calcs.map(id=>["🧮 "+CALCS[id].name,()=>openCalc(id)]);
+  l.push(["📐 Chủ đề khác",topics],["↩ Menu",menu]);opts(l);
+}
+function calcMenu(){bot("Chọn dạng bài:");const l=Object.keys(CALCS).map(id=>[CALCS[id].name,()=>openCalc(id)]);l.push(["↩ Menu",menu]);opts(l)}
+function openCalc(id){
+  const c=CALCS[id],d=bot("<div class='t'>"+esc(c.name)+"</div>"+(c.hint?"<div style='color:var(--muted);font-size:14px'>"+esc(c.hint)+"</div>":"")),form=document.createElement("div");
+  form.className="form";const ins={};
+  c.f.forEach(fd=>{
+    const lb=document.createElement("label");lb.textContent=fd[1]+(fd[3]?" (để trống nếu cần tìm)":"");
+    const inp=document.createElement("input");inp.type="text";inp.inputMode="decimal";if(fd[2])inp.value=fd[2];
+    lb.appendChild(inp);form.appendChild(lb);ins[fd[0]]=[inp,fd];
+  });
+  const go=document.createElement("button");go.type="button";go.className="go";go.textContent="Giải";
+  const er=document.createElement("div");er.className="err";
+  go.onclick=()=>{
+    er.textContent="";const v={};
+    for(const k in ins){
+      const [inp,fd]=ins[k],x=num(inp.value);
+      if(x===null&&!fd[3]){er.textContent="Hãy nhập: "+fd[1];return}
+      if(Number.isNaN(x)){er.textContent="Giá trị không hợp lệ ở: "+fd[1];return}
+      v[k]=x;
+    }
+    const r=c.solve(v);
+    if(r.err){er.textContent=r.err;return}
+    form.querySelectorAll("input").forEach(i=>i.disabled=true);go.remove();
+    bot("<div class='t'>Lời giải</div>"+r.st.map(s=>"<div class='st'>"+esc(s)+"</div>").join("")+"<div class='st'><b>Đáp án: "+esc(r.ans)+"</b></div>");
+    opts([["🔁 Giải bài khác cùng dạng",()=>openCalc(id)],["🧮 Dạng bài khác",calcMenu],["↩ Menu",menu]]);
+  };
+  form.appendChild(go);form.appendChild(er);d.appendChild(form);scroll();
+}
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+let round=null;
+function mcq(){round={list:shuf(MCQ).slice(0,5),i:0,score:0};askQ()}
+function askQ(){
+  const it=round.list[round.i],os=shuf(it.o.map((t,i)=>[t,i===it.a]));
+  bot("<div class='t'>Câu "+(round.i+1)+"/5</div>"+esc(it.q));
+  opts(os.map(([t,ok])=>[t,()=>{
+    if(ok){round.score++;bot("<span class='ok'>✅ Chính xác!</span><div class='st'>"+esc(it.e)+"</div>")}
+    else bot("<span class='bad'>❌ Chưa đúng.</span><div class='st'>Đáp án đúng: <b>"+esc(it.o[it.a])+"</b></div><div class='st'>"+esc(it.e)+"</div>");
+    round.i++;
+    if(round.i<5)opts([["Câu tiếp theo ▶",askQ]]);
+    else{bot("Bạn đúng <b>"+round.score+"/5</b> câu."+(round.score===5?" Tuyệt vời!":round.score>=3?" Khá tốt, xem lại các câu sai nhé.":" Hãy ôn lại công thức rồi thử lại nhé."));opts([["🔁 Làm bộ mới",()=>mcq()],["↩ Menu",menu]])}
+  }]));
+}
+function tf(k){
+  const set=TF[k],ans=[];
+  bot("<div class='t'>Đúng – Sai</div>"+esc(set.s)+"<br>Hãy chọn Đúng hoặc Sai cho từng ý.");
+  (function next(i){
+    bot("<b>"+"abcd"[i]+")</b> "+esc(set.it[i][0]));
+    opts([["Đúng",()=>rec(true)],["Sai",()=>rec(false)]]);
+    function rec(v){
+      ans.push(v);
+      if(i<3)return next(i+1);
+      let c=0;const lines=set.it.map((x,j)=>{const ok=ans[j]===x[1];if(ok)c++;return "<div class='st'><b>"+"abcd"[j]+")</b> "+(ok?"<span class='ok'>✅</span>":"<span class='bad'>❌</span>")+" Đáp án: "+(x[1]?"Đúng":"Sai")+". "+esc(x[2])+"</div>"}).join("");
+      const pts=[0,0.1,0.25,0.5,1][c];
+      bot("<div class='t'>Kết quả: "+c+"/4 ý</div>"+lines+"<div class='st'>Theo thang điểm câu đúng – sai của đề thi (1 ý: 0,1 ; 2 ý: 0,25 ; 3 ý: 0,5 ; 4 ý: 1 điểm), bạn được <b>"+String(pts).replace(".",",")+" điểm</b>.</div>");
+      opts([["Bộ khác",()=>tf((k+1)%TF.length)],["↩ Menu",menu]]);
+    }
+  })(0);
+}
+function search(text){
+  const t=norm(text),words=t.split(/[^a-z0-9]+/).filter(w=>w.length>1),res=[];
+  const sc=kw=>{let s=0;words.forEach(w=>{if(kw.indexOf(w)>=0)s++});if(t.length>3&&kw.indexOf(t)>=0)s+=3;return s};
+  TOPICS.forEach(x=>{const s=sc(x.kw+" "+norm(x.name));if(s)res.push([s,"📐 "+x.name,()=>showTopic(x)])});
+  Object.keys(CALCS).forEach(id=>{const c=CALCS[id],s=sc(c.kw+" "+norm(c.name));if(s)res.push([s,"🧮 "+c.name,()=>openCalc(id)])});
+  res.sort((a,b)=>b[0]-a[0]);
+  if(!res.length){bot("Mình chưa tìm thấy nội dung phù hợp với «"+esc(text)+"». Bạn thử từ khóa ngắn hơn (ví dụ: <i>khí lí tưởng</i>, <i>dao động</i>, <i>hạt nhân</i>) hoặc chọn từ menu nhé.");opts([["↩ Menu",menu]]);return}
+  bot("Mình tìm thấy các mục sau:");const l=res.slice(0,5).map(r=>[r[1],r[2]]);l.push(["↩ Menu",menu]);opts(l);
+}
+function start(name){
+  userName=name;named=true;qIn.placeholder="Gõ từ khóa, ví dụ: định luật Ôm";sendBtn.textContent="Gửi";
+  try{localStorage.setItem("vatly_name",name)}catch(e){}
+  bot("Chào <b>"+esc(name)+"</b>! Mình là Vật Lí Bot: tra công thức, giải bài có lời giải và luyện đề (kiến thức THPT).");menu();
+}
+$("bar").addEventListener("submit",e=>{
+  e.preventDefault();const t=qIn.value.trim();if(!t)return;qIn.value="";user(t);
+  if(!named)start(t.slice(0,30));else search(t);
+});
+homeBtn.onclick=()=>{if(named){user("↩ Menu");menu()}};
+(function init(){
+  let nm="";try{nm=localStorage.getItem("vatly_name")||""}catch(e){}
+  bot("Xin chào! Chào mừng bạn đến với Vật Lí Bot. Vui lòng nhập tên của bạn để bắt đầu nhé!");
+  if(nm){opts([["Tiếp tục với tên «"+nm+"»",()=>start(nm)]])}
+})();
+</script>
+</body>
+</html>
